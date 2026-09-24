@@ -5,57 +5,64 @@ import java.util.Locale
 import kotlin.math.max
 
 /**
- * Local prediction engine inspired by modern prediction keyboards:
- * current-word completion/correction, next-word prediction, and
- * on-device personalization.
+ * Local prediction engine modeled after the documented behavior of modern
+ * predictive keyboards: current-word completion, next-word prediction,
+ * correction and a personalized history of words + word pairs/triples.
+ *
+ * SwiftKey's production model is proprietary; this is an independent
+ * implementation of the same public concepts.
  */
 class SuggestionEngine(context: Context) {
-    private val prefs = context.getSharedPreferences("learned_words", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("learned_words_v2", Context.MODE_PRIVATE)
 
-    private val ar = listOf(
-        "أنا","أنت","أنتِ","أنتي","نحن","هو","هي","هم","هذا","هذه","هنا","هناك","من","ما","ماذا","متى","أين","كيف","لماذا",
-        "الذي","التي","الذين","كل","بعض","أي","أيضا","أيضًا","فقط","جدا","جدًا","تقريبًا","ربما","أكيد","بالتأكيد",
+    private val arWords = listOf(
+        "أنا","أنت","أنتي","نحن","هو","هي","هم","هذا","هذه","هنا","هناك","من","ما","ماذا","متى","أين","كيف","لماذا",
+        "الذي","التي","الذين","كل","بعض","أي","أيضا","أيضًا","فقط","جدا","جدًا","تقريبا","تقريبًا","ربما","أكيد","بالتأكيد",
         "مرحبا","مرحباً","السلام","عليكم","وعليكم","شكرا","شكرًا","شكراً","العفو","آسف","عفوا","أهلا","أهلاً","وسهلاً",
         "أريد","اريد","أحتاج","احتاج","أستطيع","استطيع","يمكن","ممكن","لازم","يجب","أحب","احب","أعرف","اعرف","أفهم","افهم",
         "اليوم","غدا","غدًا","أمس","الآن","الان","بعد","قبل","دائما","دائمًا","أحيانا","أحيانًا","بكرة","غداً",
         "البيت","العمل","السوق","المدرسة","الجامعة","المستشفى","الشارع","المطعم","المكتب","السيارة","الهاتف",
-        "التطبيق","الكيبورد","لوحة","المفاتيح","كلمة","كلمات","نص","رسالة","رسائل","مقالة","برنامج","مشروع","رابط","ملف",
+        "التطبيق","الكيبورد","لوحة","المفاتيح","كلمة","كلمات","نص","رسالة","رسائل","برنامج","مشروع","رابط","ملف",
         "صورة","فيديو","مشكلة","حل","طريقة","خطوة","إعدادات","حجم","شريط","اقتراحات","توقع","تنبؤ","كلام","شيء","شي",
         "جديد","جديدة","قديم","جميل","جميلة","تمام","جيد","جيدة","ممتاز","صحيح","خطأ","نعم","لا","لكن","لأن","لذلك","إذا","ثم",
         "مع","بدون","على","في","منذ","حتى","عن","و","أو","وقت","ساعة","دقيقة","يوم","أسبوع","شهر","سنة",
         "تعال","تعالي","اذهب","روح","شوف","انظر","قل","أرسل","ارسل","افتح","اغلق","أغلق","اكتب","اقرأ","ساعدني","ساعد",
-        "تستطيع","تقدر","أخبرني","اخبرني","أرسل لي","ارسل لي","أعطني","اعطني","من فضلك","لو سمحت",
-        "إن شاء الله","ان شاء الله","الله","شكرا لك","شكراً لك","بارك الله فيك","كل شيء","كل شي","لا مشكلة","لا بأس",
-        "هل","هل يمكن","هل تستطيع","هل تقدر","ما هو","ما هي","كيف يمكنني","كيف أستطيع","ماذا تريد","ماذا تفعل",
-        "أنا بخير","انا بخير","الحمد لله","صباح الخير","مساء الخير","ليلة سعيدة","مرحبا بك","مرحبا بكم","أهلا وسهلا",
-        "ممكن تساعدني","ممكن ترسل","ممكن ترسل لي","أريد أن","اريد ان","أحتاج إلى","احتاج الى","بعد ذلك","قبل ذلك",
-        "في الوقت الحالي","في نفس الوقت","على كل حال","شكرا جزيلا","شكراً جزيلاً"
+        "تستطيع","تقدر","أخبرني","اخبرني","أرسل","أعطني","اعطني","من","فضلك","سمحت","الله","خير","مساعدة","المساعدة",
+        "مشروع","تطبيق","هاتف","جهاز","رسالة","رسائل","صديقي","صديقتي","حبيبي","حبيبتي","جميل","رائع","ممتاز","صحيح",
+        "ممكن","أريد","أحتاج","أستطيع","سوف","سأكون","سأذهب","سوف أرسل","الآن","بعد ذلك","قبل ذلك"
     )
 
-    private val en = listOf(
+    private val enWords = listOf(
         "i","you","he","she","we","they","it","this","that","these","those","there","here","the","a","an","and","or","but",
         "if","then","so","because","for","from","with","without","about","into","on","in","at","to","of","is","are","was","were",
-        "have","has","had","will","would","can","could","should","want","need","what","when","where","why","who",
+        "have","has","had","will","would","can","could","should","want","need","what","when","where","why","who","which",
         "hello","thanks","thank","please","sorry","welcome","today","tomorrow","yesterday","now","later","before","after",
         "always","sometimes","maybe","really","just","already","still","more","much","many","some","any","all","only","also",
         "very","sure","home","work","school","office","market","restaurant","hospital","street","university","car","phone",
         "app","keyboard","message","messages","text","code","download","android","project","file","link","photo","image",
         "video","settings","problem","solution","way","step","new","good","great","nice","right","wrong","yes","no","okay","ok",
         "morning","afternoon","evening","night","time","hour","minute","day","week","month","year","come","go","look","see",
-        "send","open","close","write","read","make","use","help","try","going","first","last","next","best","working","works"
+        "send","open","close","write","read","make","use","help","try","going","first","last","next","best","working","works",
+        "please help","help me","can you","could you","what is","what are","where are you","how can i","how do i",
+        "let me know","send me","send me the","open the app","open the keyboard","keyboard settings","see you soon",
+        "talk to you","have a good","have a great","no problem","that is","this is","there is","there are","i am","i am going",
+        "i will","i want to","i need to","i would like to","we can","we need","i think","i know","i do not know",
+        "right now","after that","before that","at the moment","in the future","if you want","if you need",
+        "you can","you should","please send","please open","please check","good to know","see you tomorrow","have a nice day"
     )
 
     private val arNext = mapOf(
-        "أنا" to listOf("أريد","بخير","في","من","لا","أحب"),
-        "انا" to listOf("اريد","بخير","في","من","لا","احب"),
-        "أريد" to listOf("أن","ال","من","شيء","هذا","مساعدة"),
-        "اريد" to listOf("ان","ال","من","شي","هذا","مساعدة"),
-        "أحتاج" to listOf("إلى","مساعدة","من","هذا","شيء"),
-        "احتاج" to listOf("الى","مساعدة","من","هذا","شي"),
-        "كيف" to listOf("يمكنني","أستطيع","حالك","تعمل","ذلك","أفعل"),
-        "ماذا" to listOf("تفعل","تريد","هذا","هي","هو","الآن"),
-        "هل" to listOf("يمكن","تستطيع","تقدر","هذا","هناك","ممكن"),
-        "من" to listOf("فضلك","أجل","الممكن","البيت","العمل"),
+        "أنا" to listOf("أريد","بخير","في","من","لا","أحب","أحتاج"),
+        "انا" to listOf("اريد","بخير","في","من","لا","احب","احتاج"),
+        "أنت" to listOf("بخير","تستطيع","يمكنك","الآن","ماذا","تريد"),
+        "أريد" to listOf("أن","ال","من","شيء","هذا","مساعدة","أذهب","أعرف"),
+        "اريد" to listOf("ان","ال","من","شي","هذا","مساعدة","اذهب","اعرف"),
+        "أحتاج" to listOf("إلى","مساعدة","من","هذا","شيء","أن"),
+        "احتاج" to listOf("الى","مساعدة","من","هذا","شي","ان"),
+        "كيف" to listOf("يمكنني","أستطيع","حالك","تعمل","ذلك","أفعل","يمكن"),
+        "ماذا" to listOf("تفعل","تريد","هذا","هي","هو","الآن","تقول"),
+        "هل" to listOf("يمكن","تستطيع","تقدر","هذا","هناك","ممكن","أنت"),
+        "من" to listOf("فضلك","أجل","الممكن","البيت","العمل","أجل"),
         "شكرا" to listOf("لك","جزيلا","على","وأيضا"),
         "شكراً" to listOf("لك","جزيلاً","على","وأيضاً"),
         "السلام" to listOf("عليكم"),
@@ -71,24 +78,31 @@ class SuggestionEngine(context: Context) {
         "بعد" to listOf("ذلك","قليل","الوقت"),
         "قبل" to listOf("ذلك","أن","ما"),
         "في" to listOf("البيت","العمل","هذا","الوقت","المستقبل"),
-        "على" to listOf("كل","الأقل"),
+        "على" to listOf("كل","الأقل","هذا"),
         "هذا" to listOf("هو","شيء","الذي","المشروع"),
-        "هذه" to listOf("هي","الكلمة","المشكلة","الطريقة")
+        "هذه" to listOf("هي","الكلمة","المشكلة","الطريقة"),
+        "كيف يمكن" to listOf("أن","ني","ذلك"),
+        "أرسل" to listOf("لي","هذا","الرسالة","الرابط"),
+        "افتح" to listOf("التطبيق","الكيبورد","الرابط","الإعدادات"),
+        "أكتب" to listOf("الكلمة","الرسالة","هذا","لك"),
+        "ساعدني" to listOf("في","من","على","أريد")
     )
 
     private val enNext = mapOf(
-        "i" to listOf("am","want","need","will","can","think","know"),
-        "you" to listOf("are","can","will","have","want","need","should"),
-        "we" to listOf("are","can","will","need","have","should"),
-        "they" to listOf("are","will","can","have"),
-        "the" to listOf("best","next","first","same","way","keyboard","app"),
-        "a" to listOf("new","good","great","little","lot","way"),
-        "an" to listOf("example","app","idea"),
-        "what" to listOf("is","are","do","do you","about"),
-        "how" to listOf("are","can","do","do i","to"),
-        "where" to listOf("are","is","can","do"),
+        "i" to listOf("am","want","need","will","can","think","know","have"),
+        "you" to listOf("are","can","will","have","want","need","should","know"),
+        "we" to listOf("are","can","will","need","have","should","want"),
+        "they" to listOf("are","will","can","have","want"),
+        "he" to listOf("is","will","can","has","was"),
+        "she" to listOf("is","will","can","has","was"),
+        "the" to listOf("best","next","first","same","way","keyboard","app","new"),
+        "a" to listOf("new","good","great","little","lot","way","message"),
+        "an" to listOf("example","app","idea","important"),
+        "what" to listOf("is","are","do","do you","about","happened"),
+        "how" to listOf("are","can","do","do i","to","much"),
+        "where" to listOf("are","is","can","do","you"),
         "when" to listOf("you","will","can","is","are"),
-        "can" to listOf("you","i","we","be","help"),
+        "can" to listOf("you","i","we","be","help","do"),
         "could" to listOf("you","you please","be","i"),
         "please" to listOf("help","send","open","check","wait"),
         "thank" to listOf("you"),
@@ -102,88 +116,106 @@ class SuggestionEngine(context: Context) {
         "i want" to listOf("to","the","a","this"),
         "i need" to listOf("to","a","the","help"),
         "you can" to listOf("use","try","send","open"),
-        "no" to listOf("problem","thanks","one","more")
+        "no" to listOf("problem","thanks","one","more"),
+        "how do" to listOf("i","you","we"),
+        "let me" to listOf("know","see","check"),
+        "see you" to listOf("soon","tomorrow","later"),
+        "have a" to listOf("good","great","nice")
     )
 
     private data class Scored(val word: String, val score: Int)
 
     fun suggestions(textBeforeCursor: String, arabic: Boolean): List<String> {
-        val tokens = tokenize(textBeforeCursor)
+        val base = if (arabic) arWords else enWords
         val current = textBeforeCursor.takeLastWhile { !it.isWhitespace() }
-        val base = if (arabic) ar else en
+
         return if (current.isNotEmpty()) {
-            currentWordCompletions(current, base, arabic)
+            currentWordSuggestions(current, base, arabic)
         } else {
-            nextWordPredictions(tokens, base, arabic)
+            nextWordSuggestions(tokenize(textBeforeCursor), base, arabic)
         }
     }
 
-    fun learn(word: String, arabic: Boolean) {
+    fun learnWord(word: String, arabic: Boolean) {
         val clean = word.trim()
-        if (clean.isEmpty() || clean.length > 80 || clean.any { it.isWhitespace() }) return
+        if (!isRealWord(clean) || clean.length > 80) return
         val lang = if (arabic) "ar" else "en"
         val normalized = normalize(clean, arabic)
-        val key = lang + ":word:" + normalized
-        prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply()
+        val key = "$lang:word:$normalized"
+        val old = prefs.getInt(key, 0)
+        prefs.edit().putInt(key, (old + 1).coerceAtMost(5000)).apply()
     }
 
     fun learnContext(textBeforeCursor: String, arabic: Boolean) {
-        val tokens = tokenize(textBeforeCursor).takeLast(14)
+        val tokens = tokenize(textBeforeCursor).takeLast(20)
         if (tokens.isEmpty()) return
 
         val lang = if (arabic) "ar" else "en"
-        val editor = prefs.edit()
         val normalized = tokens.map { normalize(it, arabic) }
+        val editor = prefs.edit()
 
         normalized.forEach { token ->
-            val key = lang + ":word:" + token
-            editor.putInt(key, prefs.getInt(key, 0) + 1)
+            if (token.isNotEmpty()) {
+                val key = "$lang:word:$token"
+                editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
+            }
         }
 
         for (i in 0 until normalized.lastIndex) {
-            val key = lang + ":bi:" + normalized[i] + "|" + normalized[i + 1]
-            editor.putInt(key, prefs.getInt(key, 0) + 1)
+            val a = normalized[i]
+            val b = normalized[i + 1]
+            if (a.isNotEmpty() && b.isNotEmpty()) {
+                val key = "$lang:bi:$a|$b"
+                editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
+            }
         }
 
         for (i in 0 until normalized.size - 2) {
-            val key = lang + ":tri:" + normalized[i] + "|" + normalized[i + 1] + "|" + normalized[i + 2]
-            editor.putInt(key, prefs.getInt(key, 0) + 1)
+            val a = normalized[i]
+            val b = normalized[i + 1]
+            val d = normalized[i + 2]
+            if (a.isNotEmpty() && b.isNotEmpty() && d.isNotEmpty()) {
+                val key = "$lang:tri:$a|$b|$d"
+                editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
+            }
         }
 
         editor.apply()
     }
 
-    private fun currentWordCompletions(prefixRaw: String, base: List<String>, arabic: Boolean): List<String> {
+    private fun currentWordSuggestions(prefixRaw: String, base: List<String>, arabic: Boolean): List<String> {
         val lang = if (arabic) "ar" else "en"
         val prefix = normalize(prefixRaw, arabic)
-        val all = LinkedHashSet<String>()
-        all.addAll(base)
+        val candidates = LinkedHashSet<String>()
+        candidates.addAll(base)
 
         prefs.all.keys
-            .filter { it.startsWith(lang + ":word:") }
-            .forEach { all.add(it.removePrefix(lang + ":word:")) }
+            .filter { it.startsWith("$lang:word:") }
+            .forEach { candidates.add(it.removePrefix("$lang:word:")) }
 
         val exact = ArrayList<Scored>()
         val fuzzy = ArrayList<Scored>()
 
-        for (candidateRaw in all) {
-            val candidate = normalize(candidateRaw, arabic)
-            val freq = prefs.getInt(lang + ":word:" + candidate, 0)
+        for (raw in candidates) {
+            val candidate = normalize(raw, arabic)
+            if (candidate.isEmpty()) continue
+            val freq = prefs.getInt("$lang:word:$candidate", 0)
 
             if (candidate.startsWith(prefix)) {
-                val exactness = if (candidate == prefix) 7000 else 2600
-                val prefixQuality = max(0, 160 - (candidate.length - prefix.length) * 9)
-                exact += Scored(displayWord(candidateRaw, base, arabic), exactness + freq * 120 + prefixQuality)
+                val completionBonus = if (candidate == prefix) 500 else 3000
+                val lengthBonus = max(0, 180 - (candidate.length - prefix.length) * 12)
+                exact += Scored(display(candidate, base, arabic), completionBonus + lengthBonus + freq * 180)
             } else if (prefix.length >= 2) {
-                val probe = candidate.take(max(prefix.length, 1))
+                val probe = candidate.take(prefix.length.coerceAtLeast(1))
                 val distance = levenshtein(prefix, probe)
                 if (distance <= 2) {
-                    fuzzy += Scored(displayWord(candidateRaw, base, arabic), 1250 + freq * 70 - distance * 260 - candidate.length)
+                    fuzzy += Scored(display(candidate, base, arabic), 1500 + freq * 120 - distance * 350 - candidate.length)
                 }
             }
         }
 
-        exact += Scored(prefixRaw, 6200)
+        // Always show the literal text so a new personal word can be taught.
+        exact += Scored(prefixRaw, 4200)
 
         return (exact.sortedByDescending { it.score } + fuzzy.sortedByDescending { it.score })
             .map { it.word }
@@ -192,59 +224,80 @@ class SuggestionEngine(context: Context) {
             .take(3)
     }
 
-    private fun nextWordPredictions(tokens: List<String>, base: List<String>, arabic: Boolean): List<String> {
+    private fun nextWordSuggestions(tokens: List<String>, base: List<String>, arabic: Boolean): List<String> {
         val lang = if (arabic) "ar" else "en"
-        val normalized = tokens.map { normalize(it, arabic) }
+        val normalized = tokens.map { normalize(it, arabic) }.filter { it.isNotEmpty() }
         val last = normalized.lastOrNull()
         val previous = normalized.getOrNull(normalized.lastIndex - 1)
         val score = LinkedHashMap<String, Int>()
 
-        fun add(wordRaw: String, amount: Int) {
-            val word = wordRaw.trim()
-            if (word.isEmpty() || word.any { it.isWhitespace() }) return
+        fun add(raw: String, points: Int) {
+            val word = raw.trim()
+            if (!isRealWord(word)) return
             val key = normalize(word, arabic)
-            score[key] = (score[key] ?: 0) + amount
+            score[key] = (score[key] ?: 0) + points
         }
 
+        // Personal 3-word history has the strongest contextual weight.
         if (previous != null && last != null) {
-            val prefix = lang + ":tri:" + previous + "|" + last + "|"
+            val prefix = "$lang:tri:$previous|$last|"
             prefs.all.keys.filter { it.startsWith(prefix) }.forEach { key ->
-                add(key.substringAfterLast('|'), 1600 + prefs.getInt(key, 0) * 160)
+                add(key.substringAfterLast('|'), 5000 + prefs.getInt(key, 0) * 500)
             }
         }
 
+        // Then personal 2-word history.
         if (last != null) {
-            val prefix = lang + ":bi:" + last + "|"
+            val prefix = "$lang:bi:$last|"
             prefs.all.keys.filter { it.startsWith(prefix) }.forEach { key ->
-                add(key.substringAfterLast('|'), 1100 + prefs.getInt(key, 0) * 110)
+                add(key.substringAfterLast('|'), 3500 + prefs.getInt(key, 0) * 350)
             }
 
+            // Built-in language knowledge gives useful predictions before the
+            // keyboard has learned enough from this user.
             val map = if (arabic) arNext else enNext
             map[last]?.forEachIndexed { index, word ->
-                add(word, 900 - index * 70)
+                add(word, 2600 - index * 120)
+            }
+
+            // Also support the last two words as a phrase key.
+            if (previous != null) {
+                map["$previous $last"]?.forEachIndexed { index, word ->
+                    add(word, 3200 - index * 120)
+                }
             }
         }
 
-        prefs.all.keys.filter { it.startsWith(lang + ":word:") }.forEach { key ->
-            val word = key.removePrefix(lang + ":word:")
-            add(word, 35 + prefs.getInt(key, 0) * 18)
+        // Learned word frequency is a weaker fallback signal.
+        prefs.all.keys.filter { it.startsWith("$lang:word:") }.forEach { key ->
+            val word = key.removePrefix("$lang:word:")
+            add(word, 200 + prefs.getInt(key, 0) * 35)
         }
 
+        // Fresh install fallback: always return useful language words.
         base.forEachIndexed { index, word ->
-            add(word, 170 - index.coerceAtMost(120))
+            add(word, 120 - index.coerceAtMost(80))
         }
 
         return score.entries
             .sortedByDescending { it.value }
-            .map { displayWord(it.key, base, arabic) }
+            .map { display(it.key, base, arabic) }
             .distinctBy { normalize(it, arabic) }
             .take(3)
     }
 
-    private fun displayWord(word: String, base: List<String>, arabic: Boolean): String {
-        base.firstOrNull { normalize(it, arabic) == normalize(word, arabic) }?.let { return it }
-        return word
+    private fun tokenize(text: String): List<String> {
+        // Correct Unicode-letter regex. The previous version over-escaped
+        // this expression, which prevented reliable context learning.
+        val regex = Regex("[\\p{L}\\p{M}\\p{Nd}']+")
+        val result = regex.findAll(text).map { it.value }.toList()
+        return if (result.isNotEmpty()) result else {
+            text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        }
     }
+
+    private fun display(word: String, base: List<String>, arabic: Boolean): String =
+        base.firstOrNull { normalize(it, arabic) == normalize(word, arabic) } ?: word
 
     private fun normalize(word: String, arabic: Boolean): String {
         var value = word.trim()
@@ -257,11 +310,8 @@ class SuggestionEngine(context: Context) {
             .replace('ى', 'ي')
     }
 
-    private fun tokenize(text: String): List<String> =
-        Regex("[\\\\p{L}\\\\p{M}\\\\p{Nd}']+")
-            .findAll(text)
-            .map { it.value }
-            .toList()
+    private fun isRealWord(word: String): Boolean =
+        word.isNotBlank() && word.any { it.isLetter() } && !word.any { it.isWhitespace() }
 
     private fun levenshtein(a: String, b: String): Int {
         if (a == b) return 0
