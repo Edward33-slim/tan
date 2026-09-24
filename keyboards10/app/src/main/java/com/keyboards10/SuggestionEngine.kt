@@ -85,7 +85,7 @@ class SuggestionEngine(context: Context) {
         val clean = word.trim()
         if (clean.isEmpty() || clean.length > 100 || clean.any { it.isWhitespace() }) return
         val lang = if (arabic) "ar" else "en"
-        val key = "\$lang:word:\${clean.lowercase(Locale.ROOT)}"
+        val key = "$lang:word:${clean.lowercase(Locale.ROOT)}"
         prefs.edit().putInt(key, prefs.getInt(key, 0) + 1).apply()
     }
 
@@ -96,20 +96,20 @@ class SuggestionEngine(context: Context) {
         val clean = tokens.takeLast(8)
         val editor = prefs.edit()
         clean.takeLast(3).forEach { token ->
-            val key = "\$lang:word:\${token.lowercase(Locale.ROOT)}"
+            val key = "$lang:word:${token.lowercase(Locale.ROOT)}"
             editor.putInt(key, prefs.getInt(key, 0) + 1)
         }
         if (clean.size >= 2) {
             val a = clean[clean.lastIndex - 1].lowercase(Locale.ROOT)
             val b = clean.last().lowercase(Locale.ROOT)
-            val key = "\$lang:bi:\$a|\$b"
+            val key = "$lang:bi:$a|$b"
             editor.putInt(key, prefs.getInt(key, 0) + 1)
         }
         if (clean.size >= 3) {
             val a = clean[clean.lastIndex - 2].lowercase(Locale.ROOT)
             val b = clean[clean.lastIndex - 1].lowercase(Locale.ROOT)
             val d = clean.last().lowercase(Locale.ROOT)
-            val key = "\$lang:tri:\$a|\$b|\$d"
+            val key = "$lang:tri:$a|$b|$d"
             editor.putInt(key, prefs.getInt(key, 0) + 1)
         }
         editor.apply()
@@ -119,15 +119,15 @@ class SuggestionEngine(context: Context) {
         val lang = if (arabic) "ar" else "en"
         val all = LinkedHashSet<String>()
         all.addAll(base)
-        prefs.all.keys.filter { it.startsWith("\$lang:word:") }.forEach {
-            all.add(it.removePrefix("\$lang:word:"))
+        prefs.all.keys.filter { it.startsWith("$lang:word:") }.forEach {
+            all.add(it.removePrefix("$lang:word:"))
         }
 
         val exact = ArrayList<Scored>()
         val fuzzy = ArrayList<Scored>()
         for (candidateRaw in all) {
             val candidate = if (arabic) candidateRaw else candidateRaw.lowercase(Locale.ROOT)
-            val count = prefs.getInt("\$lang:word:\${candidate.lowercase(Locale.ROOT)}", 0)
+            val count = prefs.getInt("$lang:word:${candidate.lowercase(Locale.ROOT)}", 0)
             if (candidate.startsWith(prefix, ignoreCase = !arabic)) {
                 val baseScore = if (candidate.equals(prefix, ignoreCase = !arabic)) 10_000 else 1_000
                 exact += Scored(candidateRaw, baseScore + count * 30 - candidate.length)
@@ -172,20 +172,20 @@ class SuggestionEngine(context: Context) {
         }
 
         if (previous != null && last != null) {
-            prefs.all.keys.filter { it.startsWith("\$lang:tri:\$previous|\$last|") }.forEach { key ->
+            prefs.all.keys.filter { it.startsWith("$lang:tri:$previous|$last|") }.forEach { key ->
                 val next = key.substringAfterLast('|')
                 score[next] = (score[next] ?: 0) + 500 + prefs.getInt(key, 0) * 50
             }
         }
         if (last != null) {
-            prefs.all.keys.filter { it.startsWith("\$lang:bi:\$last|") }.forEach { key ->
+            prefs.all.keys.filter { it.startsWith("$lang:bi:$last|") }.forEach { key ->
                 val next = key.substringAfterLast('|')
                 score[next] = (score[next] ?: 0) + 300 + prefs.getInt(key, 0) * 40
             }
         }
 
-        prefs.all.keys.filter { it.startsWith("\$lang:word:") }.forEach { key ->
-            val word = key.removePrefix("\$lang:word:")
+        prefs.all.keys.filter { it.startsWith("$lang:word:") }.forEach { key ->
+            val word = key.removePrefix("$lang:word:")
             score[word] = (score[word] ?: 0) + prefs.getInt(key, 0) * 2
         }
         base.forEachIndexed { index, word ->
