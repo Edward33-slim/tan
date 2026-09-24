@@ -79,12 +79,12 @@ class KeyboardsImeService : InputMethodService() {
         updateFullscreenMode()
         showClipboard = false
         if (::keyboard.isInitialized) keyboard.resetTransientPanels()
-        refreshSuggestionsSoon(80L)
+        refreshSuggestionsSoon(120L)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        refreshSuggestionsSoon(60L)
+        refreshSuggestionsSoon(80L)
     }
 
     override fun onUpdateSelection(
@@ -96,7 +96,7 @@ class KeyboardsImeService : InputMethodService() {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        refreshSuggestionsSoon(20L)
+        refreshSuggestionsSoon(25L)
     }
 
     override fun onFinishInput() {
@@ -122,15 +122,13 @@ class KeyboardsImeService : InputMethodService() {
         val ic = currentInputConnection ?: return
 
         if (text.any { it.isWhitespace() }) {
-            val before = ic.getTextBeforeCursor(120, 0)?.toString().orEmpty()
-            val word = before.takeLastWhile { !it.isWhitespace() }
-            if (word.isNotEmpty()) suggestions.learn(word, arabic)
+            learnCompletedWord(ic)
         }
 
         ic.commitText(text, 1)
 
         if (text.any { it.isWhitespace() }) learnFromCursorContext()
-        refreshSuggestionsSoon(25L)
+        refreshSuggestionsSoon(20L)
     }
 
     fun commitSuggestion(text: String) {
@@ -139,17 +137,19 @@ class KeyboardsImeService : InputMethodService() {
         val currentWord = before.takeLastWhile { !it.isWhitespace() }
 
         if (currentWord.isNotEmpty()) {
-            suggestions.learn(text, arabic)
+            // Tapping a prediction replaces the currently typed word, just
+            // like a prediction bar should.
+            suggestions.learnWord(text, arabic)
             ic.deleteSurroundingText(currentWord.length, 0)
             ic.commitText(text, 1)
         } else {
             val prefix = if (before.isNotEmpty() && !before.last().isWhitespace()) " " else ""
-            suggestions.learn(text, arabic)
+            suggestions.learnWord(text, arabic)
             ic.commitText(prefix + text, 1)
         }
 
         learnFromCursorContext()
-        refreshSuggestionsSoon(30L)
+        refreshSuggestionsSoon(20L)
     }
 
     fun handleKey(value: String) {
@@ -157,10 +157,7 @@ class KeyboardsImeService : InputMethodService() {
         when (value) {
             "BACKSPACE" -> deleteOneCharacter()
             "ENTER" -> {
-                val before = ic.getTextBeforeCursor(120, 0)?.toString().orEmpty()
-                val word = before.takeLastWhile { !it.isWhitespace() }
-                if (word.isNotEmpty()) suggestions.learn(word, arabic)
-
+                learnCompletedWord(ic)
                 val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)
                 if (action != null &&
                     action != EditorInfo.IME_ACTION_NONE &&
@@ -168,10 +165,10 @@ class KeyboardsImeService : InputMethodService() {
                 ) {
                     ic.performEditorAction(action)
                 } else {
-                    ic.commitText("\\n", 1)
+                    ic.commitText("\n", 1)
                 }
                 learnFromCursorContext()
-                refreshSuggestionsSoon(30L)
+                refreshSuggestionsSoon(20L)
             }
             "123" -> {
                 symbolsMode = !symbolsMode
@@ -187,8 +184,9 @@ class KeyboardsImeService : InputMethodService() {
             }
             "😊" -> keyboard.toggleEmojiPanel()
             else -> {
-                ic.commitText(if (shift && value.length == 1 && value[0].isLetter()) value.uppercase() else value, 1)
-                refreshSuggestionsSoon(18L)
+                val typed = if (shift && value.length == 1 && value[0].isLetter()) value.uppercase() else value
+                ic.commitText(typed, 1)
+                refreshSuggestionsSoon(12L)
             }
         }
     }
@@ -197,7 +195,7 @@ class KeyboardsImeService : InputMethodService() {
         val ic = currentInputConnection ?: return
         val selected = ic.getSelectedText(0)
         if (!selected.isNullOrEmpty()) ic.commitText("", 1) else ic.deleteSurroundingText(1, 0)
-        refreshSuggestionsSoon(18L)
+        refreshSuggestionsSoon(12L)
     }
 
     fun deletePreviousWord() {
@@ -209,14 +207,14 @@ class KeyboardsImeService : InputMethodService() {
         while (end > 0 && before[end - 1].isWhitespace()) end--
         if (end == 0) {
             ic.deleteSurroundingText(1, 0)
-            refreshSuggestionsSoon(18L)
+            refreshSuggestionsSoon(12L)
             return
         }
 
         var start = end
         while (start > 0 && !before[start - 1].isWhitespace()) start--
         ic.deleteSurroundingText(before.length - start, 0)
-        refreshSuggestionsSoon(18L)
+        refreshSuggestionsSoon(12L)
     }
 
     fun toggleLanguage() {
@@ -255,6 +253,12 @@ class KeyboardsImeService : InputMethodService() {
     fun togglePin(item: ClipItem) {
         db.setPinned(item.id, !item.pinned)
         refreshClipboard()
+    }
+
+    private fun learnCompletedWord(ic: android.view.inputmethod.InputConnection) {
+        val before = ic.getTextBeforeCursor(240, 0)?.toString().orEmpty()
+        val word = before.takeLastWhile { !it.isWhitespace() }
+        if (word.isNotEmpty()) suggestions.learnWord(word, arabic)
     }
 
     private fun keyboardHeightPx(): Int {
@@ -329,11 +333,13 @@ class KeyboardsImeService : InputMethodService() {
         if (!::keyboard.isInitialized || !::suggestions.isInitialized) return
         val ic = currentInputConnection ?: return
         val before = ic.getTextBeforeCursor(300, 0)?.toString().orEmpty()
-        currentSuggestions = suggestions.suggestions(before, arabic)
-        if (currentSuggestions.size < 3) {
-            val fallback = if (arabic) listOf("نعم","لا","ممكن") else listOf("yes","no","okay")
-            currentSuggestions = (currentSuggestions + fallback).distinct().take(3)
+        val result = suggestions.suggestions(before, arabic).toMutableList()
+        val fallback = if (arabic) listOf("نعم","لا","ممكن") else listOf("yes","no","okay")
+        for (word in fallback) {
+            if (result.size >= 3) break
+            if (result.none { it.equals(word, ignoreCase = !arabic) }) result += word
         }
+        currentSuggestions = result.take(3)
         keyboard.invalidate()
     }
 }
