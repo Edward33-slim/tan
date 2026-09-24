@@ -85,7 +85,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
         val w = width.toFloat()
         val contentTop = 0f
         val contentH = height.toFloat()
-        val suggestionH = min(64f, contentH * 0.15f)
+        val suggestionH = min(76f, contentH * 0.18f)
 
         if (ime.showClipboard) {
             drawSuggestionBar(c, suggestionH, contentTop)
@@ -150,7 +150,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
 
         paint.color = 0xFFF0F0F0.toInt()
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = min(24f, h * .42f)
+        paint.textSize = min(27f, h * .44f)
 
         if (ime.showClipboard) {
             c.drawText("📋  الحافظة", width / 2f, top + h * .65f, paint)
@@ -544,7 +544,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
     override fun onTouchEvent(e: MotionEvent): Boolean {
         val contentTop = 0f
         val contentH = height.toFloat()
-        val suggestionH = min(64f, contentH * 0.15f)
+        val suggestionH = min(76f, contentH * 0.18f)
         val suggestionTop = contentTop
 
         if (settingsOpen && !ime.showClipboard) {
