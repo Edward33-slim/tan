@@ -85,7 +85,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
         val w = width.toFloat()
         val contentTop = 0f
         val contentH = height.toFloat()
-        val suggestionH = min(76f, contentH * 0.18f)
+        val suggestionH = min(88f, contentH * 0.20f)
 
         if (ime.showClipboard) {
             drawSuggestionBar(c, suggestionH, contentTop)
@@ -150,7 +150,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
 
         paint.color = 0xFFF0F0F0.toInt()
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = min(27f, h * .44f)
+        paint.textSize = min(30f, h * .43f)
 
         if (ime.showClipboard) {
             c.drawText("📋  الحافظة", width / 2f, top + h * .65f, paint)
@@ -159,8 +159,13 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
             c.drawText("📋", each * .5f, top + h * .65f, paint)
             c.drawText("⚙", each * 1.5f, top + h * .65f, paint)
             ime.currentSuggestions.take(3).forEachIndexed { i, word ->
+                // The center prediction is visually stronger, matching the
+                // familiar SwiftKey three-slot layout.
+                paint.typeface = if (i == 1) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                paint.textSize = if (i == 1) min(31f, h * .45f) else min(29f, h * .42f)
                 c.drawText(word, each * (i + 2.5f), top + h * .65f, paint)
             }
+            paint.typeface = Typeface.DEFAULT
         }
         paint.textAlign = Paint.Align.LEFT
 
@@ -544,7 +549,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
     override fun onTouchEvent(e: MotionEvent): Boolean {
         val contentTop = 0f
         val contentH = height.toFloat()
-        val suggestionH = min(76f, contentH * 0.18f)
+        val suggestionH = min(88f, contentH * 0.20f)
         val suggestionTop = contentTop
 
         if (settingsOpen && !ime.showClipboard) {
@@ -726,7 +731,7 @@ class KeyboardView(context: Context, private val ime: KeyboardsImeService) : Vie
                 if (key.value == " ") {
                     val dx = e.x - downX
                     if (abs(dx) >= 45f) ime.toggleLanguage()
-                    else ime.commitText(" ")
+                    else ime.commitSpace()
                 } else {
                     ime.handleKey(key.value)
                 }
