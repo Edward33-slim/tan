@@ -1,36 +1,14 @@
 name: Cleanup old Actions runs
 
 on:
-  push:
-    paths:
-      - .github/workflows/cleanup-actions.yml
+  workflow_dispatch:
 
 permissions:
   actions: write
-  contents: write
 
 jobs:
   cleanup:
+    if: false
     runs-on: ubuntu-latest
     steps:
-      - name: Delete completed workflow runs except this run
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/runs?status=completed&per_page=100" --jq '.workflow_runs[].id' |
-          while read -r run_id; do
-            if [ "$run_id" != "$GITHUB_RUN_ID" ]; then
-              echo "Deleting workflow run $run_id"
-              gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/actions/runs/$run_id"
-            fi
-          done
-
-      - name: Remove this temporary cleanup workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          SHA="$(gh api "/repos/${GITHUB_REPOSITORY}/contents/.github/workflows/cleanup-actions.yml" --jq '.sha')"
-          gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/contents/.github/workflows/cleanup-actions.yml" \
-            -f message="Remove temporary Actions cleanup workflow" \
-            -f sha="$SHA" \
-            -f branch="${GITHUB_REF_NAME}"
+      - run: echo "Disabled"
