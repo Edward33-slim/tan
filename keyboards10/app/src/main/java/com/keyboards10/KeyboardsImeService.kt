@@ -136,16 +136,42 @@ class KeyboardsImeService : InputMethodService() {
         val before = ic.getTextBeforeCursor(240, 0)?.toString().orEmpty()
         val currentWord = before.takeLastWhile { !it.isWhitespace() }
 
+        suggestions.learnWord(text, arabic)
+
         if (currentWord.isNotEmpty()) {
-            // Tapping a prediction replaces the currently typed word, just
-            // like a prediction bar should.
-            suggestions.learnWord(text, arabic)
+            // Replace the word being typed, then finish it with a space so the
+            // prediction engine immediately moves to next-word mode.
             ic.deleteSurroundingText(currentWord.length, 0)
-            ic.commitText(text, 1)
+            ic.commitText("$text ", 1)
         } else {
             val prefix = if (before.isNotEmpty() && !before.last().isWhitespace()) " " else ""
-            suggestions.learnWord(text, arabic)
-            ic.commitText(prefix + text, 1)
+            ic.commitText("$prefix$text ", 1)
+        }
+
+        learnFromCursorContext()
+        refreshSuggestionsSoon(20L)
+    }
+
+    fun commitSpace() {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(240, 0)?.toString().orEmpty()
+        val currentWord = before.takeLastWhile { !it.isWhitespace() }
+
+        if (currentWord.isNotEmpty() && currentSuggestions.size >= 2) {
+            // SwiftKey's default autocorrect behavior: space can accept the
+            // middle prediction. Our middle slot is always the user's typed
+            // word, unless a better completion is available.
+            val middle = currentSuggestions[1]
+            if (!middle.equals(currentWord, ignoreCase = !arabic)) {
+                ic.deleteSurroundingText(currentWord.length, 0)
+                suggestions.learnWord(middle, arabic)
+                ic.commitText("$middle ", 1)
+            } else {
+                suggestions.learnWord(currentWord, arabic)
+                ic.commitText(" ", 1)
+            }
+        } else {
+            ic.commitText(" ", 1)
         }
 
         learnFromCursorContext()
@@ -332,7 +358,7 @@ class KeyboardsImeService : InputMethodService() {
     fun refreshSuggestions() {
         if (!::keyboard.isInitialized || !::suggestions.isInitialized) return
         val ic = currentInputConnection ?: return
-        val before = ic.getTextBeforeCursor(300, 0)?.toString().orEmpty()
+        val before = ic.getTextBeforeCursor(500, 0)?.toString().orEmpty()
         val result = suggestions.suggestions(before, arabic).toMutableList()
         val fallback = if (arabic) listOf("نعم","لا","ممكن") else listOf("yes","no","okay")
         for (word in fallback) {
