@@ -129,6 +129,10 @@ class SuggestionEngine(context: Context) {
         val base = if (arabic) arWords else enWords
         val current = textBeforeCursor.takeLastWhile { !it.isWhitespace() }
 
+        // SwiftKey-style behavior:
+        // - while a word is being typed: left/right completions + the
+        //   user's literal word in the center
+        // - after a completed word: three next-word predictions
         return if (current.isNotEmpty()) {
             currentWordSuggestions(current, base, arabic)
         } else {
@@ -147,37 +151,34 @@ class SuggestionEngine(context: Context) {
     }
 
     fun learnContext(textBeforeCursor: String, arabic: Boolean) {
-        val tokens = tokenize(textBeforeCursor).takeLast(20)
+        val tokens = tokenize(textBeforeCursor)
+            .map { normalize(it, arabic) }
+            .filter { it.isNotEmpty() }
+            .takeLast(8)
+
         if (tokens.isEmpty()) return
 
         val lang = if (arabic) "ar" else "en"
-        val normalized = tokens.map { normalize(it, arabic) }
         val editor = prefs.edit()
 
-        normalized.forEach { token ->
-            if (token.isNotEmpty()) {
-                val key = "$lang:word:$token"
-                editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
-            }
+        // Only reinforce the newly completed word and its immediate context.
+        // This prevents older words from being artificially counted again
+        // every time the user presses space.
+        val last = tokens.last()
+        val wordKey = "$lang:word:$last"
+        editor.putInt(wordKey, (prefs.getInt(wordKey, 0) + 1).coerceAtMost(5000))
+
+        if (tokens.size >= 2) {
+            val a = tokens[tokens.lastIndex - 1]
+            val key = "$lang:bi:$a|$last"
+            editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
         }
 
-        for (i in 0 until normalized.lastIndex) {
-            val a = normalized[i]
-            val b = normalized[i + 1]
-            if (a.isNotEmpty() && b.isNotEmpty()) {
-                val key = "$lang:bi:$a|$b"
-                editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
-            }
-        }
-
-        for (i in 0 until normalized.size - 2) {
-            val a = normalized[i]
-            val b = normalized[i + 1]
-            val d = normalized[i + 2]
-            if (a.isNotEmpty() && b.isNotEmpty() && d.isNotEmpty()) {
-                val key = "$lang:tri:$a|$b|$d"
-                editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
-            }
+        if (tokens.size >= 3) {
+            val a = tokens[tokens.lastIndex - 2]
+            val b = tokens[tokens.lastIndex - 1]
+            val key = "$lang:tri:$a|$b|$last"
+            editor.putInt(key, (prefs.getInt(key, 0) + 1).coerceAtMost(5000))
         }
 
         editor.apply()
@@ -186,42 +187,72 @@ class SuggestionEngine(context: Context) {
     private fun currentWordSuggestions(prefixRaw: String, base: List<String>, arabic: Boolean): List<String> {
         val lang = if (arabic) "ar" else "en"
         val prefix = normalize(prefixRaw, arabic)
+        if (prefix.isEmpty()) return nextWordSuggestions(emptyList(), base, arabic)
+
         val candidates = LinkedHashSet<String>()
-        candidates.addAll(base)
+        base.filter { isSingleToken(it) }.forEach { candidates.add(it) }
 
         prefs.all.keys
             .filter { it.startsWith("$lang:word:") }
-            .forEach { candidates.add(it.removePrefix("$lang:word:")) }
+            .forEach {
+                val word = it.removePrefix("$lang:word:")
+                if (isSingleToken(word)) candidates.add(word)
+            }
 
-        val exact = ArrayList<Scored>()
-        val fuzzy = ArrayList<Scored>()
+        val scored = ArrayList<Scored>()
 
         for (raw in candidates) {
             val candidate = normalize(raw, arabic)
-            if (candidate.isEmpty()) continue
+            if (candidate.isEmpty() || candidate == prefix) continue
+
             val freq = prefs.getInt("$lang:word:$candidate", 0)
 
             if (candidate.startsWith(prefix)) {
-                val completionBonus = if (candidate == prefix) 500 else 3000
-                val lengthBonus = max(0, 180 - (candidate.length - prefix.length) * 12)
-                exact += Scored(display(candidate, base, arabic), completionBonus + lengthBonus + freq * 180)
+                val completionLength = candidate.length - prefix.length
+                val score = 10000 +
+                    freq * 260 +
+                    max(0, 1400 - completionLength * 90) +
+                    if (candidate.length == prefix.length + 1) 500 else 0
+                scored += Scored(display(candidate, base, arabic), score)
             } else if (prefix.length >= 2) {
-                val probe = candidate.take(prefix.length.coerceAtLeast(1))
+                val probe = candidate.take(prefix.length.coerceAtMost(candidate.length))
                 val distance = levenshtein(prefix, probe)
                 if (distance <= 2) {
-                    fuzzy += Scored(display(candidate, base, arabic), 1500 + freq * 120 - distance * 350 - candidate.length)
+                    scored += Scored(
+                        display(candidate, base, arabic),
+                        4200 + freq * 180 - distance * 850 - candidate.length * 8
+                    )
                 }
             }
         }
 
-        // Always show the literal text so a new personal word can be taught.
-        exact += Scored(prefixRaw, 4200)
-
-        return (exact.sortedByDescending { it.score } + fuzzy.sortedByDescending { it.score })
+        val alternatives = scored
+            .sortedByDescending { it.score }
             .map { it.word }
-            .filter { it.isNotBlank() }
+            .filter { normalize(it, arabic) != prefix }
             .distinctBy { normalize(it, arabic) }
-            .take(3)
+            .take(8)
+
+        // SwiftKey's familiar three-slot arrangement keeps the user's
+        // current text in the middle and places corrections/completions
+        // around it.
+        val result = ArrayList<String>(3)
+        if (alternatives.isNotEmpty()) result += alternatives[0]
+        result += prefixRaw
+        if (alternatives.size > 1) result += alternatives[1]
+
+        // If the dictionary has no useful match, keep the typed word visible
+        // and fill the remaining slots with language fallbacks.
+        if (result.size < 3) {
+            for (word in base) {
+                if (result.size >= 3) break
+                if (isSingleToken(word) &&
+                    result.none { normalize(it, arabic) == normalize(word, arabic) }
+                ) result += word
+            }
+        }
+
+        return result.distinctBy { normalize(it, arabic) }.take(3)
     }
 
     private fun nextWordSuggestions(tokens: List<String>, base: List<String>, arabic: Boolean): List<String> {
@@ -233,50 +264,50 @@ class SuggestionEngine(context: Context) {
 
         fun add(raw: String, points: Int) {
             val word = raw.trim()
-            if (!isRealWord(word)) return
+            if (!isSingleToken(word)) return
             val key = normalize(word, arabic)
+            if (key.isEmpty()) return
             score[key] = (score[key] ?: 0) + points
         }
 
-        // Personal 3-word history has the strongest contextual weight.
+        // 3-word context is strongest.
         if (previous != null && last != null) {
             val prefix = "$lang:tri:$previous|$last|"
             prefs.all.keys.filter { it.startsWith(prefix) }.forEach { key ->
-                add(key.substringAfterLast('|'), 5000 + prefs.getInt(key, 0) * 500)
+                add(key.substringAfterLast('|'), 9000 + prefs.getInt(key, 0) * 700)
             }
         }
 
-        // Then personal 2-word history.
+        // 2-word context is next.
         if (last != null) {
             val prefix = "$lang:bi:$last|"
             prefs.all.keys.filter { it.startsWith(prefix) }.forEach { key ->
-                add(key.substringAfterLast('|'), 3500 + prefs.getInt(key, 0) * 350)
+                add(key.substringAfterLast('|'), 6000 + prefs.getInt(key, 0) * 500)
             }
 
-            // Built-in language knowledge gives useful predictions before the
-            // keyboard has learned enough from this user.
             val map = if (arabic) arNext else enNext
+
             map[last]?.forEachIndexed { index, word ->
-                add(word, 2600 - index * 120)
+                add(word, 5000 - index * 180)
             }
 
-            // Also support the last two words as a phrase key.
             if (previous != null) {
                 map["$previous $last"]?.forEachIndexed { index, word ->
-                    add(word, 3200 - index * 120)
+                    add(word, 7200 - index * 180)
                 }
             }
         }
 
-        // Learned word frequency is a weaker fallback signal.
+        // Personal vocabulary is a useful fallback, but must not overpower
+        // real contextual bigram/trigram predictions.
         prefs.all.keys.filter { it.startsWith("$lang:word:") }.forEach { key ->
             val word = key.removePrefix("$lang:word:")
-            add(word, 200 + prefs.getInt(key, 0) * 35)
+            add(word, 300 + prefs.getInt(key, 0) * 45)
         }
 
-        // Fresh install fallback: always return useful language words.
+        // Cold-start language fallback.
         base.forEachIndexed { index, word ->
-            add(word, 120 - index.coerceAtMost(80))
+            add(word, 80 - index.coerceAtMost(60))
         }
 
         return score.entries
@@ -310,8 +341,12 @@ class SuggestionEngine(context: Context) {
             .replace('ى', 'ي')
     }
 
-    private fun isRealWord(word: String): Boolean =
-        word.isNotBlank() && word.any { it.isLetter() } && !word.any { it.isWhitespace() }
+    private fun isSingleToken(word: String): Boolean =
+        word.isNotBlank() &&
+            word.any { it.isLetter() } &&
+            word.none { it.isWhitespace() || it == '|' }
+
+    private fun isRealWord(word: String): Boolean = isSingleToken(word)
 
     private fun levenshtein(a: String, b: String): Int {
         if (a == b) return 0
