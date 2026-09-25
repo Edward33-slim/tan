@@ -39,7 +39,7 @@ jobs:
         with:
           name: keyboards10-debug-apk-${{ github.run_number }}
           path: keyboards10/app/build/outputs/apk/debug/*.apk
-          archive: false
+          archive: true
           if-no-files-found: error
 
       - name: Publish APK to GitHub Release
