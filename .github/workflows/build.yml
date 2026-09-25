@@ -7,6 +7,9 @@ on:
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,3 +41,10 @@ jobs:
           path: keyboards10/app/build/outputs/apk/debug/*.apk
           archive: false
           if-no-files-found: error
+
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "keyboards10-${{ github.run_number }}.apk"
+          gh release create "v0.1.${{ github.run_number }}" "keyboards10-${{ github.run_number }}.apk"             --title "Keyboard10 Build ${{ github.run_number }}"             --notes "Android keyboard APK built automatically from the main branch."
