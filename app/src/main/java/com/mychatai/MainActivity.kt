@@ -44,7 +44,7 @@ data class ChatMessage(val role:String, val text:String)
  var input by remember { mutableStateOf(TextFieldValue()) }
  var messages by remember { mutableStateOf(loadMessages(ctx)) }
  var busy by remember { mutableStateOf(false) }
- var status by remember { mutableStateOf("") }
+ var status by remember { mutableStateOf("") }\n var showSettings by remember { mutableStateOf(false) }
  val scope=rememberCoroutineScope(); val list=rememberLazyListState()
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
   if(uri!=null) scope.launch { val info=readAttachment(ctx,uri); input=input.copy(text=input.text + "\n\n[ملف مرفوع: ${info.first}]\n${info.second}\n") }
@@ -53,7 +53,7 @@ data class ChatMessage(val role:String, val text:String)
  MaterialTheme(colorScheme=darkColorScheme(background=Color(17,17,17),surface=Color(28,28,28),primary=Color(160,160,160))) {
   Column(Modifier.fillMaxSize().background(Color(17,17,17))) {
    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment=Alignment.CenterVertically) {
-    Text("MyChatAi", style=MaterialTheme.typography.titleLarge, color=Color.White, modifier=Modifier.weight(1f))
+    Text("MyChatAi", style=MaterialTheme.typography.titleLarge, color=Color.White, modifier=Modifier.weight(1f))\n    TextButton(onClick={showSettings=true}) { Text("⚙", color=Color.White) }
     AssistChip(onClick={ provider=if(provider==Provider.CHATGPT) Provider.CLAUDE else Provider.CHATGPT }, label={Text(if(provider==Provider.CHATGPT) "ChatGPT" else "Claude")})
    }
    LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal=10.dp), state=list, verticalArrangement=Arrangement.spacedBy(8.dp)) {
