@@ -60,10 +60,10 @@ fun MyChatAiApp() {
                 try {
                     val info = readAttachment(ctx, uri)
                     input = input.copy(
-                        text = input.text + "\n\n[ملف مرفوع: \${info.first}]\n\${info.second}\n"
+                        text = input.text + "\n\n[ملف مرفوع: ${info.first}]\n${info.second}\n"
                     )
                 } catch (e: Exception) {
-                    status = "تعذر قراءة الملف: \${e.message}"
+                    status = "تعذر قراءة الملف: ${e.message}"
                 }
             }
         }
@@ -258,7 +258,7 @@ suspend fun readAttachment(ctx: Context, uri: Uri): Pair<String, String> {
             sb.toString()
         }
 
-        else -> "تم إرفاق الملف. الاسم=\$name، الحجم=\${bytes.size} bytes"
+        else -> "تم إرفاق الملف. الاسم=$name، الحجم=${bytes.size} bytes"
     }
 
     return name to text
@@ -289,14 +289,14 @@ object ApiClient {
         val response = http.newCall(
             Request.Builder()
                 .url("https://api.openai.com/v1/responses")
-                .addHeader("Authorization", "Bearer \$key")
+                .addHeader("Authorization", "Bearer $key")
                 .addHeader("Content-Type", "application/json")
                 .post(body)
                 .build()
         ).execute()
 
         val raw = response.body?.string() ?: throw Exception("OpenAI: Empty response")
-        if (!response.isSuccessful) throw Exception("OpenAI \${response.code}: \$raw")
+        if (!response.isSuccessful) throw Exception("OpenAI ${response.code}: $raw")
 
         val json = JSONObject(raw)
         val outputText = json.optString("output_text")
@@ -341,7 +341,7 @@ object ApiClient {
         ).execute()
 
         val raw = response.body?.string() ?: throw Exception("Claude: Empty response")
-        if (!response.isSuccessful) throw Exception("Claude \${response.code}: \$raw")
+        if (!response.isSuccessful) throw Exception("Claude ${response.code}: $raw")
 
         val content = JSONObject(raw).optJSONArray("content") ?: throw Exception("Claude: no content")
         val result = StringBuilder()
