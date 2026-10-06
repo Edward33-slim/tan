@@ -277,27 +277,36 @@ fun ApiKeysInline(ctx:Context){
 }
 
 @Composable
-fun AccountDialog(onDismiss:()->Unit){
+fun AccountDialog(ctx:Context,onDismiss:()->Unit){
+    val activity=ctx as? Activity
     var message by remember{mutableStateOf("")}
+    var busy by remember{mutableStateOf(false)}
+    var email by remember{mutableStateOf(ChatGptAuth.email(ctx))}
     AlertDialog(
         onDismissRequest=onDismiss,title={Text("الحساب")},
         text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-                Text(
-                    "المحادثات السحابية بعد حذف التطبيق تحتاج خادم حسابات وقاعدة بيانات. واجهة OAuth جاهزة للربط، لكن بيانات الخادم لم تُضف إلى المستودع.",
-                    color=Color.LightGray
-                )
-                Button(onClick={message="Google يحتاج إعداد OAuth في خادم المشروع."},Modifier.fillMaxWidth()){Text("Google")}
-                Button(onClick={message="Microsoft / Hotmail يحتاج إعداد OAuth في خادم المشروع."},Modifier.fillMaxWidth()){Text("Microsoft / Hotmail")}
-                Button(onClick={message="Yahoo يحتاج إعداد OAuth في خادم المشروع."},Modifier.fillMaxWidth()){Text("Yahoo")}
-                Button(onClick={message="Proton يحتاج مزود OAuth/OIDC يدعمه الخادم."},Modifier.fillMaxWidth()){Text("Proton")}
+                Text("ChatGPT: تسجيل دخول OAuth/PKCE حقيقي مع تجديد تلقائي للـ Access Token.",color=Color.LightGray)
+                if(email.isNotBlank())Text("ChatGPT: "+email,color=Color.White)
+                Button(enabled=!busy&&activity!=null,onClick={
+                    val a=activity ?: return@Button
+                    busy=true;message=""
+                    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main){
+                        try{email=ChatGptAuth.signIn(a);message="تم تسجيل الدخول بنجاح."}
+                        catch(e:Exception){message=e.message ?: "فشل تسجيل الدخول"}
+                        finally{busy=false}
+                    }
+                },Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Continue with ChatGPT")}
+                Button(onClick={message="Google يحتاج OAuth Client وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Google")}
+                Button(onClick={message="Microsoft / Hotmail يحتاج OAuth Client وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Microsoft / Hotmail")}
+                Button(onClick={message="Yahoo يحتاج OAuth Client وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Yahoo")}
+                Button(onClick={message="Proton يحتاج مزود OAuth/OIDC وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Proton")}
                 if(message.isNotBlank())Text(message,color=Color(240,200,120))
             }
         },
         confirmButton={TextButton(onClick=onDismiss){Text("إغلاق")}}
     )
 }
-
 @Composable
 fun PluginPermissionsDialog(ctx:Context,onDismiss:()->Unit){
     var state by remember{mutableStateOf(loadPluginPermissions(ctx))}
