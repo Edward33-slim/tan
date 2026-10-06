@@ -23,6 +23,9 @@ jobs:
         with:
           gradle-version: '8.10'
 
+      - name: Compile check
+        run: gradle assembleDebug --no-daemon
+
       - name: Prepare permanent signing keystore
         env:
           KEYSTORE_B64: ${{ secrets.MYCHATAI_KEYSTORE_BASE64 }}
