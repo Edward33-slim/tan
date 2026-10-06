@@ -79,10 +79,15 @@ fun MyChatAiApp(){
     val active=chats.firstOrNull{it.id==activeId} ?: chats.first()
     val scroll=rememberLazyListState()
 
-    val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri:Uri?->
-        if(uri!=null)scope.launch{
-            try{pending=pending+copyAttachment(ctx,uri);status=""}
-            catch(e:Exception){status="تعذر إرفاق الملف: "+(e.message ?: "خطأ")}
+    val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()){uris:List<Uri>->
+        if(uris.isNotEmpty())scope.launch{
+            try{
+                val added=uris.map{copyAttachment(ctx,it)}
+                pending=pending+added
+                status=""
+            }catch(e:Exception){
+                status="تعذر إرفاق الملفات: "+(e.message ?: "خطأ")
+            }
         }
     }
 
