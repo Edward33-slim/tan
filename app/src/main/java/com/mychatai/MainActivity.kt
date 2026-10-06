@@ -296,11 +296,11 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
                         catch(e:Exception){message=e.message ?: "فشل تسجيل الدخول"}
                         finally{busy=false}
                     }
-                },Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Continue with ChatGPT")}
-                Button(onClick={message="Google يحتاج OAuth Client وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Google")}
-                Button(onClick={message="Microsoft / Hotmail يحتاج OAuth Client وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Microsoft / Hotmail")}
-                Button(onClick={message="Yahoo يحتاج OAuth Client وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Yahoo")}
-                Button(onClick={message="Proton يحتاج مزود OAuth/OIDC وخادم حسابات فعلي."},Modifier.fillMaxWidth()){Text("Proton")}
+                },modifier=Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Continue with ChatGPT")}
+                Button(onClick={message="Google يحتاج OAuth Client وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Google")}
+                Button(onClick={message="Microsoft / Hotmail يحتاج OAuth Client وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Microsoft / Hotmail")}
+                Button(onClick={message="Yahoo يحتاج OAuth Client وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Yahoo")}
+                Button(onClick={message="Proton يحتاج مزود OAuth/OIDC وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Proton")}
                 if(message.isNotBlank())Text(message,color=Color(240,200,120))
             }
         },
