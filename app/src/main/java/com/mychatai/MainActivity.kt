@@ -1,5 +1,6 @@
 package com.mychatai
 
+import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -206,7 +207,7 @@ fun MyChatAiApp(){
         }
 
         if(showSettings)SettingsDialog(ctx,{showSettings=false},{showSettings=false;showAccount=true},{showSettings=false;showPlugins=true})
-        if(showAccount)AccountDialog{showAccount=false}
+        if(showAccount)AccountDialog(ctx){showAccount=false}
         if(showPlugins)PluginPermissionsDialog(ctx){showPlugins=false}
     }
 }
