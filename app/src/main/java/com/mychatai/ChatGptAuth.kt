@@ -71,7 +71,7 @@ object ChatGptAuth {
         q.append("&code_challenge_method=S256&code_challenge=").append(enc(challenge))
 
         withContext(Dispatchers.Main) {
-            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AUTH + "?" + q))
+            activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AUTH + "?" + q.toString())))
         }
 
         val socket = server.accept()
