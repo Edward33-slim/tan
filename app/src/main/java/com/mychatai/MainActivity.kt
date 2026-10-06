@@ -164,7 +164,7 @@ fun MyChatAiApp(){
                             input=TextFieldValue();pending=emptyList();busy=true;status=""
                             scope.launch{
                                 try{
-                                    val answer=ApiClient.ask(provider,updated.messages,apiKey(ctx,provider))
+                                    val answer=ApiClient.ask(ctx,provider,updated.messages,apiKey(ctx,provider))
                                     val out=chats.toMutableList()
                                     val current=out.indexOfFirst{it.id==activeId}
                                     if(current>=0){
@@ -433,9 +433,16 @@ fun savePluginPermissions(ctx:Context,s:PluginPermissions){
 object ApiClient{
     private val http=OkHttpClient()
 
-    suspend fun ask(provider:Provider,messages:List<ChatMessage>,key:String):String=withContext(Dispatchers.IO){
-        if(key.isBlank())throw IllegalStateException("ضع مفتاح API في الإعدادات أولاً")
-        if(provider==Provider.CHATGPT)openai(messages,key) else claude(messages,key)
+    suspend fun ask(ctx:Context,provider:Provider,messages:List<ChatMessage>,key:String):String=withContext(Dispatchers.IO){
+        if(provider==Provider.CHATGPT){
+            val token=ChatGptAuth.validAccessToken(ctx)
+            try{openai(messages,token)}catch(e:Exception){
+                if(e.message?.startsWith("OpenAI 401")==true)openai(messages,ChatGptAuth.forceRefresh(ctx)) else throw e
+            }
+        }else{
+            if(key.isBlank())throw IllegalStateException("ضع مفتاح Anthropic API في الإعدادات أولاً")
+            claude(messages,key)
+        }
     }
 
     private fun openai(messages:List<ChatMessage>,key:String):String{
