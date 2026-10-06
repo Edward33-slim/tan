@@ -119,7 +119,7 @@ fun MyChatAiApp(){
                         }
                     }
                 }
-                if(busy)item{Text("جاري التفكير…",color=Color.Gray,Modifier.padding(12.dp))}
+                if(busy)item{Text("جاري التفكير…",color=Color.Gray,modifier=Modifier.padding(12.dp))}
             }
 
             if(pending.isNotEmpty()){
@@ -130,11 +130,11 @@ fun MyChatAiApp(){
                             label={Text("📎 "+a.name.take(18))}
                         )
                     }
-                    if(pending.size>3)Text("+${pending.size-3}",color=Color.Gray,Modifier.padding(8.dp))
+                    if(pending.size>3)Text("+${pending.size-3}",color=Color.Gray,modifier=Modifier.padding(8.dp))
                 }
             }
 
-            if(status.isNotBlank())Text(status,color=Color(240,140,140),Modifier.padding(horizontal=14.dp,vertical=4.dp))
+            if(status.isNotBlank())Text(status,color=Color(240,140,140),modifier=Modifier.padding(horizontal=14.dp,vertical=4.dp))
 
             Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.Bottom){
                 IconButton(onClick={picker.launch(arrayOf("*/*"))}){Text("＋",color=Color.White,style=MaterialTheme.typography.headlineSmall)}
