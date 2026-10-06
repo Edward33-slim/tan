@@ -26,8 +26,16 @@ jobs:
       - name: Build complete APK
         run: gradle assembleRelease --no-daemon
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk MyChatAi-4.2.apk
+      - name: Locate and rename APK
+        shell: bash
+        run: |
+          set -e
+          echo "Release output:"
+          find app/build/outputs/apk/release -maxdepth 1 -type f -print
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          cp "$APK" MyChatAi-4.2.apk
+          ls -lh MyChatAi-4.2.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
