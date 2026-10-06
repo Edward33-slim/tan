@@ -1,4 +1,4 @@
-name: Build MyChatAi 4.1
+name: Build MyChatAi 4.2
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -49,16 +49,16 @@ jobs:
           fi
           gradle assembleRelease --no-daemon
 
-      - name: Verify APK signature
+      - name: Verify permanent APK signature
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk MyChatAi-4.1.apk
+        run: cp app/build/outputs/apk/release/app-release.apk MyChatAi-4.2.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MyChatAi-4.1
-          path: MyChatAi-4.1.apk
+          name: MyChatAi-4.2
+          path: MyChatAi-4.2.apk
           retention-days: 90
