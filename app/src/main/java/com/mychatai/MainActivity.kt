@@ -80,8 +80,8 @@ fun MyChatAiApp(){
                 val added=uris.map{copyAttachment(ctx,it)}
                 pending=pending+added
                 status=""
-            }catch(e:Exception){
-                status="تعذر إرفاق الملفات: "+(e.message ?: "خطأ")
+            }catch(_:Exception){
+                status="تعذر إرفاق الملفات الآن. حاول مرة أخرى."
             }
         }
     }
@@ -167,7 +167,7 @@ fun MyChatAiApp(){
                                         cc.messages.add(ChatMessage(role="assistant",text=answer))
                                         out[current]=cc;chats=out;saveChats(ctx,chats)
                                     }
-                                }catch(e:Exception){status=e.message ?: "حدث خطأ"}finally{busy=false}
+                                }catch(_:Exception){status="تعذر الحصول على رد من الخدمة الآن. حاول مرة أخرى."}finally{busy=false}
                             }
                         }
                     }
@@ -276,7 +276,7 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
     var message by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     var email by remember{mutableStateOf(GoogleAuth.email(ctx))}
-    var clientId by remember{mutableStateOf(GoogleAuth.serverClientId(ctx))}
+    var clientId by remember{mutableStateOf(GoogleAuth.serverClientId(ctx).ifBlank { GoogleAuth.DEFAULT_SERVER_CLIENT_ID })}
     val googleSignedIn = email.isNotBlank()
     AlertDialog(
         onDismissRequest=onDismiss,title={Text("الحساب")},
@@ -291,7 +291,7 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
                     busy=true;message=""
                     kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main){
                         try{email=GoogleAuth.signIn(a);message="تم تسجيل الدخول بحساب Google بنجاح."}
-                        catch(e:Exception){message=e.message ?: "فشل تسجيل الدخول إلى Google"}
+                        catch(_:Exception){message="تعذر تسجيل الدخول إلى Google الآن. حاول مرة أخرى."}
                         finally{busy=false}
                     }
                 },modifier=Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Google")}
