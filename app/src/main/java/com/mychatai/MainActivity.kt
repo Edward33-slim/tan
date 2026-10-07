@@ -2,7 +2,6 @@ package com.mychatai
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.webkit.MimeTypeMap
@@ -299,13 +298,8 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
                     }
                 },modifier=Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Google")}
                 Button(onClick={
-                    try{
-                        val intent=Intent(Intent.ACTION_VIEW, Uri.parse("https://account.proton.me/login"))
-                        ctx.startActivity(intent)
-                        message="تم فتح تسجيل الدخول الرسمي لـ Proton."
-                    }catch(e:Exception){
-                        message="تعذر فتح صفحة Proton: "+(e.message ?: "خطأ")
-                    }
+                    if(activity!=null) activity.startActivity(Intent(activity, ProtonLoginActivity::class.java))
+                    else message="تعذر فتح تسجيل الدخول إلى Proton"
                 },modifier=Modifier.fillMaxWidth()){Text("Proton")}
                 if(message.isNotBlank())Text(message,color=Color(240,200,120))
             }
