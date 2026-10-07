@@ -283,6 +283,7 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
         text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 Text("تسجيل الدخول إلى MyChatAi",color=Color.LightGray)
+                OutlinedTextField(value=clientId,onValueChange={clientId=it},modifier=Modifier.fillMaxWidth(),label={Text("Google Web Client ID")},singleLine=true)
                 if(googleSignedIn)Text("Google: "+email,color=Color.White)
                 Button(enabled=!busy&&activity!=null,onClick={
                     val a=activity ?: return@Button
