@@ -70,7 +70,6 @@ fun MyChatAiApp(){
     var showChats by remember{mutableStateOf(false)}
     var showSettings by remember{mutableStateOf(false)}
     var showAccount by remember{mutableStateOf(false)}
-    var showPlugins by remember{mutableStateOf(false)}
     var renameTarget by remember{mutableStateOf<Chat?>(null)}
 
     if(chats.isEmpty()){
@@ -206,9 +205,8 @@ fun MyChatAiApp(){
             })
         }
 
-        if(showSettings)SettingsDialog(ctx,{showSettings=false},{showSettings=false;showAccount=true},{showSettings=false;showPlugins=true})
+        if(showSettings)SettingsDialog(ctx,{showSettings=false},{showSettings=false;showAccount=true})
         if(showAccount)AccountDialog(ctx){showAccount=false}
-        if(showPlugins)PluginPermissionsDialog(ctx){showPlugins=false}
     }
 }
 
@@ -304,41 +302,6 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
         confirmButton={TextButton(onClick=onDismiss){Text("إغلاق")}}
     )
 }
-@Composable
-fun PluginPermissionsDialog(ctx:Context,onDismiss:()->Unit){
-    var state by remember{mutableStateOf(loadPluginPermissions(ctx))}
-    fun save(s:PluginPermissions){state=s;savePluginPermissions(ctx,s)}
-    val rows=listOf(
-        "قراءة الملفات" to state.readFiles,"إنشاء الملفات" to state.writeFiles,"تعديل الملفات" to state.modifyFiles,
-        "حذف الملفات" to state.deleteFiles,"الإنترنت" to state.network,"الكاميرا" to state.camera,
-        "الميكروفون" to state.microphone,"الإشعارات" to state.notifications,"الموقع" to state.location,
-        "جهات الاتصال" to state.contacts
-    )
-    AlertDialog(
-        onDismissRequest=onDismiss,title={Text("المكونات الإضافية")},
-        text={
-            Column{
-                Text("السماح للإضافة بالقراءة والكتابة والتعديل حسب ما يسمح به Android. لا يمكن تجاوز قيود النظام.",color=Color.LightGray)
-                rows.forEachIndexed{i,row->
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                        Text(row.first,Modifier.weight(1f))
-                        Switch(row.second,onCheckedChange={v->
-                            save(
-                                when(i){
-                                    0->state.copy(readFiles=v);1->state.copy(writeFiles=v);2->state.copy(modifyFiles=v);3->state.copy(deleteFiles=v)
-                                    4->state.copy(network=v);5->state.copy(camera=v);6->state.copy(microphone=v);7->state.copy(notifications=v)
-                                    8->state.copy(location=v);else->state.copy(contacts=v)
-                                }
-                            )
-                        })
-                    }
-                }
-            }
-        },
-        confirmButton={TextButton(onClick=onDismiss){Text("حفظ وإغلاق")}}
-    )
-}
-
 fun apiKey(ctx:Context,p:Provider):String=
     ctx.getSharedPreferences("keys",0).getString(if(p==Provider.CHATGPT)"openai" else "anthropic","") ?: ""
 
@@ -409,22 +372,6 @@ suspend fun copyAttachment(ctx:Context,uri:Uri):Attachment=withContext(Dispatche
         }
     } ?: throw IllegalStateException("تعذر فتح الملف")
     Attachment(UUID.randomUUID().toString(),name,mime,file.absolutePath,size)
-}
-
-fun loadPluginPermissions(ctx:Context):PluginPermissions{
-    val p=ctx.getSharedPreferences("plugins",0)
-    return PluginPermissions(
-        p.getBoolean("read",false),p.getBoolean("write",false),p.getBoolean("modify",false),p.getBoolean("delete",false),
-        p.getBoolean("network",false),p.getBoolean("camera",false),p.getBoolean("microphone",false),p.getBoolean("notifications",false),
-        p.getBoolean("location",false),p.getBoolean("contacts",false)
-    )
-}
-
-fun savePluginPermissions(ctx:Context,s:PluginPermissions){
-    ctx.getSharedPreferences("plugins",0).edit()
-        .putBoolean("read",s.readFiles).putBoolean("write",s.writeFiles).putBoolean("modify",s.modifyFiles).putBoolean("delete",s.deleteFiles)
-        .putBoolean("network",s.network).putBoolean("camera",s.camera).putBoolean("microphone",s.microphone).putBoolean("notifications",s.notifications)
-        .putBoolean("location",s.location).putBoolean("contacts",s.contacts).apply()
 }
 
 object ApiClient{
