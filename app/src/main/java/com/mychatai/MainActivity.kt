@@ -246,13 +246,12 @@ fun RenameDialog(old:String,onDismiss:()->Unit,onSave:(String)->Unit){
 }
 
 @Composable
-fun SettingsDialog(ctx:Context,onDismiss:()->Unit,onAccount:()->Unit,onPlugins:()->Unit){
+fun SettingsDialog(ctx:Context,onDismiss:()->Unit,onAccount:()->Unit){
     AlertDialog(
         onDismissRequest=onDismiss,title={Text("الإعدادات")},
         text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 Button(onClick=onAccount,Modifier.fillMaxWidth()){Text("الحساب وتسجيل الدخول")}
-                Button(onClick=onPlugins,Modifier.fillMaxWidth()){Text("المكونات الإضافية")}
                 ApiKeysInline(ctx)
             }
         },
