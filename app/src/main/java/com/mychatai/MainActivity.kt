@@ -276,6 +276,7 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
     var message by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     var email by remember{mutableStateOf(GoogleAuth.email(ctx))}
+    var clientId by remember{mutableStateOf(GoogleAuth.serverClientId(ctx))}
     val googleSignedIn = email.isNotBlank()
     AlertDialog(
         onDismissRequest=onDismiss,title={Text("الحساب")},
