@@ -297,10 +297,7 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
                         finally{busy=false}
                     }
                 },modifier=Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Google")}
-                Button(onClick={
-                    if(activity!=null) activity.startActivity(Intent(activity, ProtonLoginActivity::class.java))
-                    else message="تعذر فتح تسجيل الدخول إلى Proton"
-                },modifier=Modifier.fillMaxWidth()){Text("Proton")}
+
                 if(message.isNotBlank())Text(message,color=Color(240,200,120))
             }
         },
