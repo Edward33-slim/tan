@@ -276,12 +276,13 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
     var message by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     var email by remember{mutableStateOf(GoogleAuth.email(ctx))}
+    val googleSignedIn = email.isNotBlank()
     AlertDialog(
         onDismissRequest=onDismiss,title={Text("الحساب")},
         text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 Text("تسجيل الدخول إلى MyChatAi",color=Color.LightGray)
-                if(email.isNotBlank())Text("Google: "+email,color=Color.White)
+                if(googleSignedIn)Text("Google: "+email,color=Color.White)
                 Button(enabled=!busy&&activity!=null,onClick={
                     val a=activity ?: return@Button
                     busy=true;message=""
@@ -385,7 +386,7 @@ object ApiClient{
 
     private fun openai(messages:List<ChatMessage>,key:String):String{
         val input=JSONArray()
-        messages.takeLast(120).forEach{m->
+        messages.takeLast(80).forEach{m->
             if(m.attachments.isEmpty()){
                 input.put(JSONObject().put("role",if(m.role=="user")"user" else "assistant").put("content",m.text))
             }else{
