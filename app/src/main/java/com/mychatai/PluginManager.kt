@@ -88,6 +88,10 @@ fun PluginManagerDialog(ctx: Context, onDismiss: () -> Unit) {
                         onDelete = {
                             save(plugins.filterNot { it.id == p.id })
                             message = "تمت إزالة " + p.name
+                        },
+                        onEdit = { edited ->
+                            save(plugins.map { if (it.id == p.id) edited else it })
+                            message = "تم تحديث " + p.name
                         }
                     )
                 }
@@ -128,11 +132,7 @@ fun PluginManagerDialog(ctx: Context, onDismiss: () -> Unit) {
             existing = plugins,
             onDismiss = { showCatalog = false },
             onAdd = {
-                if (plugins.none { it.type == it.type }) {
-                    save(plugins + it)
-                } else {
-                    save(plugins + it.copy(id = UUID.randomUUID().toString()))
-                }
+                save(plugins + it.copy(id = UUID.randomUUID().toString()))
                 showCatalog = false
                 message = "تمت إضافة " + it.name + ". أدخل رمز الوصول ثم اضغط اتصال."
             }
@@ -146,7 +146,8 @@ private fun PluginRow(
     busy: Boolean,
     onPermission: (PluginEntry) -> Unit,
     onConnect: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: (PluginEntry) -> Unit
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -167,6 +168,7 @@ private fun PluginRow(
                     Text(if (busy) "جارٍ الاتصال…" else "اختبار الاتصال")
                 }
                 TextButton(onClick = onDelete) { Text("إزالة") }
+                TextButton(onClick = { onEdit(plugin) }) { Text("تعديل") }
             }
         }
     }
