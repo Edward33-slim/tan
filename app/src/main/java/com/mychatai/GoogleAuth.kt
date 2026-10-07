@@ -50,7 +50,7 @@ object GoogleAuth {
         }
 
         val google = GoogleIdTokenCredential.createFrom(credential.data)
-        val email = google.email
+        val email = google.id
         if (email.isBlank()) throw IllegalStateException("Google لم يُرجع البريد الإلكتروني")
 
         activity.getSharedPreferences(PREF, 0).edit()
