@@ -6,10 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,6 +133,10 @@ fun PluginManagerDialog(ctx: Context, onDismiss: () -> Unit) {
                 save(plugins + it.copy(id = UUID.randomUUID().toString()))
                 showCatalog = false
                 message = "تمت إضافة " + it.name + ". أدخل رمز الوصول ثم اضغط اتصال."
+            },
+            onAddCustom = {
+                showCatalog = false
+                showAdd = true
             }
         )
     }
@@ -233,73 +239,174 @@ private fun AddPluginDialog(onDismiss: () -> Unit, onSave: (PluginEntry) -> Unit
     )
 }
 
+data class CatalogPlugin(
+    val name: String,
+    val description: String,
+    val url: String,
+    val type: String
+)
+
+private val pluginCatalog = listOf(
+    CatalogPlugin("Gmail", "قراءة وإدارة البريد الإلكتروني", "https://gmail.googleapis.com", "custom"),
+    CatalogPlugin("Google Drive", "Drive وDocs وSheets وSlides", "https://www.googleapis.com/drive/v3", "custom"),
+    CatalogPlugin("GitHub", "المستودعات والملفات وIssues وPull Requests", "https://api.github.com", "github"),
+    CatalogPlugin("Dropbox", "الملفات والمجلدات والتخزين السحابي", "https://api.dropboxapi.com", "dropbox"),
+    CatalogPlugin("Supabase", "إدارة واستعلام قواعد البيانات", "https://api.supabase.com", "custom"),
+    CatalogPlugin("Slack", "الرسائل والقنوات وبيانات مساحة العمل", "https://slack.com/api", "custom"),
+    CatalogPlugin("Notion", "الصفحات وقواعد البيانات والمحتوى", "https://api.notion.com/v1", "custom"),
+    CatalogPlugin("Trello", "اللوحات والقوائم والبطاقات", "https://api.trello.com/1", "custom"),
+    CatalogPlugin("Jira", "المشاريع والمهام وIssues", "https://your-domain.atlassian.net/rest/api/3", "custom"),
+    CatalogPlugin("Microsoft OneDrive", "الملفات والمجلدات عبر Microsoft Graph", "https://graph.microsoft.com/v1.0", "custom"),
+    CatalogPlugin("Google Calendar", "الأحداث والتقويمات", "https://www.googleapis.com/calendar/v3", "custom"),
+    CatalogPlugin("Linear", "Issues والمشاريع وسير العمل", "https://api.linear.app", "custom")
+)
+
 @Composable
 private fun PluginCatalogDialog(
     existing: List<PluginEntry>,
     onDismiss: () -> Unit,
-    onAdd: (PluginEntry) -> Unit
+    onAdd: (PluginEntry) -> Unit,
+    onAddCustom: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("تصفح المكونات الإضافية") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CatalogItem(
-                    "GitHub",
-                    "https://api.github.com",
-                    "GitHub REST API",
-                    existing.any { it.type == "github" }
-                ) {
-                    onAdd(
-                        PluginEntry(
-                            name = "GitHub",
-                            url = "https://api.github.com",
-                            type = "github",
-                            token = ""
-                        )
-                    )
-                }
-                CatalogItem(
-                    "Dropbox",
-                    "https://api.dropboxapi.com",
-                    "Dropbox API",
-                    existing.any { it.type == "dropbox" }
-                ) {
-                    onAdd(
-                        PluginEntry(
-                            name = "Dropbox",
-                            url = "https://api.dropboxapi.com",
-                            type = "dropbox",
-                            token = ""
-                        )
-                    )
-                }
-                Text(
-                    "يمكن إضافة خدمات أخرى من خلال إضافة مكون API مخصص باستخدام API رسمي.",
-                    color = Color.Gray
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }
-    )
-}
+    var query by remember { mutableStateOf("") }
 
-@Composable
-private fun CatalogItem(
-    name: String,
-    url: String,
-    description: String,
-    added: Boolean,
-    onAdd: () -> Unit
-) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(10.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(name)
-                Text(description, color = Color.Gray)
-            }
-            Button(onClick = onAdd, enabled = !added) {
-                Text(if (added) "مضاف" else "إضافة")
+    val filtered = remember(query) {
+        pluginCatalog.filter {
+            query.isBlank() ||
+                it.name.contains(query, ignoreCase = true) ||
+                it.description.contains(query, ignoreCase = true)
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.94f),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(18, 18, 18)
+        ) {
+            Column(Modifier.fillMaxSize().padding(16.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "المكونات الإضافية",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
+                    )
+                    TextButton(onClick = onDismiss) { Text("إغلاق") }
+                }
+
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("بحث في المكونات الإضافية") },
+                    leadingIcon = { Text("⌕", color = Color.LightGray) },
+                    trailingIcon = {
+                        if (query.isNotBlank()) {
+                            TextButton(onClick = { query = "" }) { Text("مسح") }
+                        }
+                    }
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Button(
+                    onClick = onAddCustom,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("＋ إضافة أي مكون API")
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    if (query.isBlank()) "الأكثر استخداماً" else "نتائج البحث",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                if (filtered.isEmpty()) {
+                    Text(
+                        "لا توجد نتيجة. استخدم «إضافة أي مكون API» لإضافة خدمة غير موجودة في القائمة.",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filtered, key = { it.name }) { item ->
+                            val added = existing.any {
+                                it.type == item.type && it.name.equals(item.name, ignoreCase = true)
+                            }
+
+                            Card(Modifier.fillMaxWidth()) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(48.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = Color(38, 38, 38)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                item.name.take(1),
+                                                color = Color.White,
+                                                style = MaterialTheme.typography.titleLarge
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(Modifier.width(12.dp))
+
+                                    Column(Modifier.weight(1f)) {
+                                        Text(item.name, color = Color.White)
+                                        Text(
+                                            item.description,
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+
+                                    Button(
+                                        enabled = !added,
+                                        onClick = {
+                                            onAdd(
+                                                PluginEntry(
+                                                    name = item.name,
+                                                    url = item.url,
+                                                    type = item.type,
+                                                    token = ""
+                                                )
+                                            )
+                                        }
+                                    ) {
+                                        Text(if (added) "مضاف" else "إضافة")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    "يمكنك إضافة أي خدمة أخرى إذا كانت توفر API رسميًا. بعد الإضافة اضبط رمز الوصول وأذونات القراءة/الإنشاء/التعديل/الحذف من شاشة المكون.",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
