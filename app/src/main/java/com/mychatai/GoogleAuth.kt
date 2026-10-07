@@ -10,24 +10,34 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import java.util.UUID
 
 object GoogleAuth {
-    /*
-     * Replace this with the Web application OAuth client ID created in
-     * Google Cloud Console for MyChatAi.
-     */
-    private const val SERVER_CLIENT_ID = "YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com"
     private const val PREF = "google_auth"
+    private const val KEY_SERVER_CLIENT_ID = "server_client_id"
 
     fun email(ctx: Context): String =
         ctx.getSharedPreferences(PREF, 0).getString("email", "") ?: ""
 
+    fun serverClientId(ctx: Context): String =
+        ctx.getSharedPreferences(PREF, 0).getString(KEY_SERVER_CLIENT_ID, "") ?: ""
+
+    fun setServerClientId(ctx: Context, value: String) {
+        ctx.getSharedPreferences(PREF, 0).edit()
+            .putString(KEY_SERVER_CLIENT_ID, value.trim())
+            .apply()
+    }
+
     suspend fun signIn(activity: Activity): String {
-        if (SERVER_CLIENT_ID.startsWith("YOUR_")) {
-            throw IllegalStateException("ضع Google Web Client ID في GoogleAuth.kt أولاً")
+        val serverClientId = serverClientId(activity)
+        if (serverClientId.isBlank() ||
+            !serverClientId.endsWith(".apps.googleusercontent.com")
+        ) {
+            throw IllegalStateException(
+                "أدخل Google Web Client ID الصحيح أولاً"
+            )
         }
 
         val nonce = UUID.randomUUID().toString()
         val option = GetGoogleIdOption.Builder()
-            .setServerClientId(SERVER_CLIENT_ID)
+            .setServerClientId(serverClientId)
             .setFilterByAuthorizedAccounts(false)
             .setAutoSelectEnabled(false)
             .setNonce(nonce)
@@ -51,7 +61,9 @@ object GoogleAuth {
 
         val google = GoogleIdTokenCredential.createFrom(credential.data)
         val email = google.id
-        if (email.isBlank()) throw IllegalStateException("Google لم يُرجع البريد الإلكتروني")
+        if (email.isBlank()) {
+            throw IllegalStateException("Google لم يُرجع البريد الإلكتروني")
+        }
 
         activity.getSharedPreferences(PREF, 0).edit()
             .putString("email", email)
