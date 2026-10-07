@@ -32,14 +32,14 @@ jobs:
           set -e
           echo "Debug output:"
           find app/build/outputs/apk/debug -maxdepth 1 -type f -print
-          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
           cp "$APK" MyChatAi-4.4.apk
-          ls -lh MyChatAi-4.3.apk
+          ls -lh MyChatAi-4.4.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MyChatAi-4.4
-          path: MyChatAi-4.3.apk
+          path: MyChatAi-4.4.apk
           retention-days: 90
