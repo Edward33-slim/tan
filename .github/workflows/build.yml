@@ -1,4 +1,4 @@
-name: Build MyChatAi 4.2
+name: Build MyChatAi 4.3
 
 on:
   workflow_dispatch:
@@ -34,12 +34,12 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -print
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
-          cp "$APK" MyChatAi-4.2.apk
-          ls -lh MyChatAi-4.2.apk
+          cp "$APK" MyChatAi-4.3.apk
+          ls -lh MyChatAi-4.3.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MyChatAi-4.2
-          path: MyChatAi-4.2.apk
+          name: MyChatAi-4.3
+          path: MyChatAi-4.3.apk
           retention-days: 90
