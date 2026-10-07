@@ -31,6 +31,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig signingConfigs.debug
             minifyEnabled false
             if (System.getenv("MYCHATAI_KEYSTORE_PATH")) {
                 signingConfig signingConfigs.release
