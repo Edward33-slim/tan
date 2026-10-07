@@ -12,6 +12,7 @@ import java.util.UUID
 object GoogleAuth {
     private const val PREF = "google_auth"
     private const val KEY_SERVER_CLIENT_ID = "server_client_id"
+    const val DEFAULT_SERVER_CLIENT_ID = "377365141235-voaafi94dtvlimo5jve57fbk36mld1jp.apps.googleusercontent.com"
 
     fun email(ctx: Context): String =
         ctx.getSharedPreferences(PREF, 0).getString("email", "") ?: ""
@@ -26,7 +27,7 @@ object GoogleAuth {
     }
 
     suspend fun signIn(activity: Activity): String {
-        val serverClientId = serverClientId(activity)
+        val serverClientId = serverClientId(activity).ifBlank { DEFAULT_SERVER_CLIENT_ID }
         if (serverClientId.isBlank() ||
             !serverClientId.endsWith(".apps.googleusercontent.com")
         ) {
