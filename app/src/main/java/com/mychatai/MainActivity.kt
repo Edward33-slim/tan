@@ -97,7 +97,7 @@ fun MyChatAiApp(){
                 Text(active.title,color=Color.White,style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f))
                 AssistChip(
                     onClick={provider=if(provider==Provider.CHATGPT)Provider.CLAUDE else Provider.CHATGPT},
-                    label={Text(if(provider==Provider.CHATGPT)"GPT-6 Pro" else "Claude Opus 5.5")}
+                    label={Text(if(provider==Provider.CHATGPT)"GPT-6 Astra" else "Claude Opus 5.5")}
                 )
                 TextButton(onClick={showSettings=true}){Text("⚙",color=Color.White)}
             }
