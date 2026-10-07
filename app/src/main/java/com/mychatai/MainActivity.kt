@@ -50,12 +50,6 @@ enum class Provider{CHATGPT,CLAUDE}
 data class Attachment(val id:String,val name:String,val mime:String,val path:String,val size:Long)
 data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val attachments:List<Attachment> = emptyList())
 data class Chat(val id:String=UUID.randomUUID().toString(),var title:String,val messages:MutableList<ChatMessage> = mutableListOf())
-data class PluginPermissions(
-    val readFiles:Boolean=false,val writeFiles:Boolean=false,val modifyFiles:Boolean=false,val deleteFiles:Boolean=false,
-    val network:Boolean=false,val camera:Boolean=false,val microphone:Boolean=false,val notifications:Boolean=false,
-    val location:Boolean=false,val contacts:Boolean=false
-)
-
 @Composable
 fun MyChatAiApp(){
     val ctx=LocalContext.current
