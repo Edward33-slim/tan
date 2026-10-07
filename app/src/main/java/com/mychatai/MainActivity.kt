@@ -287,6 +287,7 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
                 if(googleSignedIn)Text("Google: "+email,color=Color.White)
                 Button(enabled=!busy&&activity!=null,onClick={
                     val a=activity ?: return@Button
+                    GoogleAuth.setServerClientId(ctx,clientId)
                     busy=true;message=""
                     kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main){
                         try{email=GoogleAuth.signIn(a);message="تم تسجيل الدخول بحساب Google بنجاح."}
