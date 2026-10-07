@@ -1,4 +1,4 @@
-name: Build MyChatAi 4.3
+name: Build MyChatAi 4.4
 
 on:
   workflow_dispatch:
@@ -24,22 +24,22 @@ jobs:
           gradle-version: '8.10'
 
       - name: Build complete APK
-        run: gradle assembleRelease --no-daemon
+        run: gradle assembleDebug --no-daemon
 
       - name: Locate and rename APK
         shell: bash
         run: |
           set -e
-          echo "Release output:"
-          find app/build/outputs/apk/release -maxdepth 1 -type f -print
+          echo "Debug output:"
+          find app/build/outputs/apk/debug -maxdepth 1 -type f -print
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
-          cp "$APK" MyChatAi-4.3.apk
+          cp "$APK" MyChatAi-4.4.apk
           ls -lh MyChatAi-4.3.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MyChatAi-4.3
+          name: MyChatAi-4.4
           path: MyChatAi-4.3.apk
           retention-days: 90
