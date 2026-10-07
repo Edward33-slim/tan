@@ -281,26 +281,23 @@ fun AccountDialog(ctx:Context,onDismiss:()->Unit){
     val activity=ctx as? Activity
     var message by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
-    var email by remember{mutableStateOf(ChatGptAuth.email(ctx))}
+    var email by remember{mutableStateOf(GoogleAuth.email(ctx))}
     AlertDialog(
         onDismissRequest=onDismiss,title={Text("الحساب")},
         text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-                Text("ChatGPT: تسجيل دخول OAuth/PKCE حقيقي مع تجديد تلقائي للـ Access Token.",color=Color.LightGray)
-                if(email.isNotBlank())Text("ChatGPT: "+email,color=Color.White)
+                Text("تسجيل الدخول إلى MyChatAi",color=Color.LightGray)
+                if(email.isNotBlank())Text("Google: "+email,color=Color.White)
                 Button(enabled=!busy&&activity!=null,onClick={
                     val a=activity ?: return@Button
                     busy=true;message=""
                     kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main){
-                        try{email=ChatGptAuth.signIn(a);message="تم تسجيل الدخول بنجاح."}
-                        catch(e:Exception){message=e.message ?: "فشل تسجيل الدخول"}
+                        try{email=GoogleAuth.signIn(a);message="تم تسجيل الدخول بحساب Google بنجاح."}
+                        catch(e:Exception){message=e.message ?: "فشل تسجيل الدخول إلى Google"}
                         finally{busy=false}
                     }
-                },modifier=Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Continue with ChatGPT")}
-                Button(onClick={message="Google يحتاج OAuth Client وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Google")}
-                Button(onClick={message="Microsoft / Hotmail يحتاج OAuth Client وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Microsoft / Hotmail")}
-                Button(onClick={message="Yahoo يحتاج OAuth Client وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Yahoo")}
-                Button(onClick={message="Proton يحتاج مزود OAuth/OIDC وخادم حسابات فعلي."},modifier=Modifier.fillMaxWidth()){Text("Proton")}
+                },modifier=Modifier.fillMaxWidth()){Text(if(busy)"جارٍ تسجيل الدخول…" else "Google")}
+                Button(onClick={message="تسجيل الدخول عبر Proton غير متاح كتدفق OAuth/OIDC عام لتطبيقات الطرف الثالث؛ أبقي الزر دون ادعاء تسجيل دخول غير حقيقي."},modifier=Modifier.fillMaxWidth()){Text("Proton")}
                 if(message.isNotBlank())Text(message,color=Color(240,200,120))
             }
         },
@@ -435,10 +432,8 @@ object ApiClient{
 
     suspend fun ask(ctx:Context,provider:Provider,messages:List<ChatMessage>,key:String):String=withContext(Dispatchers.IO){
         if(provider==Provider.CHATGPT){
-            val token=ChatGptAuth.validAccessToken(ctx)
-            try{openai(messages,token)}catch(e:Exception){
-                if(e.message?.startsWith("OpenAI 401")==true)openai(messages,ChatGptAuth.forceRefresh(ctx)) else throw e
-            }
+            if(key.isBlank())throw IllegalStateException("ضع مفتاح OpenAI API في الإعدادات أولاً")
+            openai(messages,key)
         }else{
             if(key.isBlank())throw IllegalStateException("ضع مفتاح Anthropic API في الإعدادات أولاً")
             claude(messages,key)
