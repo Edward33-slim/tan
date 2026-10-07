@@ -88,10 +88,6 @@ fun PluginManagerDialog(ctx: Context, onDismiss: () -> Unit) {
                         onDelete = {
                             save(plugins.filterNot { it.id == p.id })
                             message = "تمت إزالة " + p.name
-                        },
-                        onEdit = { edited ->
-                            save(plugins.map { if (it.id == p.id) edited else it })
-                            message = "تم تحديث " + p.name
                         }
                     )
                 }
@@ -146,8 +142,7 @@ private fun PluginRow(
     busy: Boolean,
     onPermission: (PluginEntry) -> Unit,
     onConnect: () -> Unit,
-    onDelete: () -> Unit,
-    onEdit: (PluginEntry) -> Unit
+    onDelete: () -> Unit
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -158,6 +153,19 @@ private fun PluginRow(
                 }
                 Text(if (plugin.token.isBlank()) "غير متصل" else "رمز محفوظ", color = Color.LightGray)
             }
+            var token by remember(plugin.id) { mutableStateOf(plugin.token) }
+            OutlinedTextField(
+                value = token,
+                onValueChange = { token = it },
+                label = { Text("رمز الوصول") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation()
+            )
+            Button(
+                onClick = { onPermission(plugin.copy(token = token.trim())) },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("حفظ رمز الوصول") }
             PermissionSwitch("قراءة", plugin.read) { onPermission(plugin.copy(read = it)) }
             PermissionSwitch("إنشاء", plugin.create) { onPermission(plugin.copy(create = it)) }
             PermissionSwitch("تعديل", plugin.update) { onPermission(plugin.copy(update = it)) }
@@ -168,7 +176,6 @@ private fun PluginRow(
                     Text(if (busy) "جارٍ الاتصال…" else "اختبار الاتصال")
                 }
                 TextButton(onClick = onDelete) { Text("إزالة") }
-                TextButton(onClick = { onEdit(plugin) }) { Text("تعديل") }
             }
         }
     }
