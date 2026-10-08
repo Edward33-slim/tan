@@ -1,0 +1,26 @@
+name: Extract Downls10
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract ZIP
+        run: |
+          rm -rf extracted
+          mkdir extracted
+          unzip -q Downls10.zip -d extracted
+          find extracted -maxdepth 3 -type f -print
+      - name: Upload extracted project
+        uses: actions/upload-artifact@v4
+        with:
+          name: Downls10-extracted
+          path: extracted/
+          retention-days: 1
